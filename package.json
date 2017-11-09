@@ -1,6 +1,9 @@
 {
   "name": "tumblr-client",
+  "description": "A tiny client that allows you to view tumblr feeds without themes",
   "version": "0.1.0",
+  "author": "Andrew Hyndman <ajhyndman@hotmail.com>",
+  "license": "MIT",
   "private": true,
   "dependencies": {
     "react": "^16.0.0",
