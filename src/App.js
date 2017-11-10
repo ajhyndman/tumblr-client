@@ -1,12 +1,22 @@
 // @flow
 import React, { Component } from 'react';
 import styled from 'styled-components';
+import idx from 'idx';
+
+import Photo from './Photo';
+import Video from './Video';
 
 type State = {|
+  active: number,
   blogIdentifier: string,
-  offset: number,
+  isGetNewPostsPending: boolean,
   posts: Object[],
 |};
+
+// This is the tumblr image API limit.
+const PAGE_SIZE = 20;
+// Change this if you want to start paginating from a deep offset.
+const INITIAL_OFFSET = 0;
 
 const getPosts = (blogIdentifier: string, offset?: number = 0) => {
   return fetch(
@@ -17,6 +27,13 @@ const getPosts = (blogIdentifier: string, offset?: number = 0) => {
     .then(json => json.response.posts);
 };
 
+const preloadImages = (imageUrls: string[]) => {
+  imageUrls.forEach(imageUrl => {
+    const img = new Image();
+    img.src = imageUrl;
+  });
+};
+
 const UI_FONT = `
   -apple-system, BlinkMacSystemFont,
   "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell",
@@ -24,8 +41,30 @@ const UI_FONT = `
   sans-serif
 `;
 
-// This is the tumblr image API limit.
-const PAGE_SIZE = 20;
+const Root = styled.div`
+  background: rgb(48, 48, 48);
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+`;
+
+const Body = styled.div`
+  align-items: center;
+  box-sizing: border-box;
+  display: flex;
+  flex-grow: 1;
+  justify-content: center;
+  padding: 20px;
+`;
+
+const Counter = styled.div`
+  bottom: 0;
+  color: LightGray;
+  font-family: ${UI_FONT};
+  padding: 5px 10px;
+  position: fixed;
+  right: 0;
+`;
 
 const Input = styled.input`
   border: 1px solid LightGray;
@@ -44,18 +83,14 @@ const Input = styled.input`
   }
 `;
 
-const Photo = styled.img`
-  width: 100%;
-  display: block;
-`;
-
 class App extends Component<{||}, State> {
   constructor(props: {||}) {
     super(props);
 
     this.state = {
+      active: 0,
       blogIdentifier: '',
-      offset: 0,
+      isGetNewPostsPending: false,
       posts: [],
     };
   }
@@ -69,34 +104,58 @@ class App extends Component<{||}, State> {
   }
 
   onDocumentKeyDown = (event: KeyboardEvent) => {
+    const { active, isGetNewPostsPending, posts } = this.state;
+
     if (event.key === 'ArrowRight') {
-      this.getNext();
+      // If we're near the end of the list of posts that we already have, fetch more.
+      if (active + 5 >= posts.length && !isGetNewPostsPending)
+        this.getNewPosts();
+      this.setState(state => ({ ...state, active: state.active + 1 }));
     } else if (event.key === 'ArrowLeft') {
-      this.getPrev();
+      this.setState(state => ({
+        ...state,
+        active: Math.max(state.active - 1, 0),
+      }));
     }
   };
 
   getNewPosts = () => {
-    const { blogIdentifier, offset } = this.state;
+    const { blogIdentifier, posts } = this.state;
+    const offset = INITIAL_OFFSET + posts.length;
+
+    this.setState(state => ({ ...state, isGetNewPostsPending: true }));
     getPosts(blogIdentifier, offset).then(posts => {
-      this.setState(state => ({ ...state, posts }));
+      const supportedPosts = posts.filter(
+        ({ type }) => type === 'photo' || type === 'video',
+      );
+
+      const imageUrls = posts
+        .filter(({ type }) => type === 'photo')
+        .map(post => idx(post, _ => _.photos[0].alt_sizes[0].url) || '');
+
+      preloadImages(imageUrls);
+
+      this.setState(state => ({
+        ...state,
+        isGetNewPostsPending: false,
+        posts: [...state.posts, ...supportedPosts],
+      }));
     });
   };
 
-  getNext = () => {
-    this.setState(state => ({ ...state, offset: state.offset + PAGE_SIZE }));
-    this.getNewPosts();
-  };
-
-  getPrev = () => {
-    this.setState(state => ({ ...state, offset: state.offset - PAGE_SIZE }));
-    this.getNewPosts();
-  };
-
   render() {
-    const { blogIdentifier } = this.state;
+    const { active, blogIdentifier, isGetNewPostsPending, posts } = this.state;
+
+    const activePost = idx(posts, _ => _[active]);
+    const activePostType = idx(activePost, _ => _.type);
+    const activePhotoUrl = idx(activePost, _ => _.photos[0].alt_sizes[0].url);
+    const activeVideoEmbedCode = idx(
+      activePost,
+      _ => _.player[_.player.length - 1].embed_code,
+    );
+
     return (
-      <div className="App">
+      <Root>
         <Input
           value={blogIdentifier}
           onChange={event => {
@@ -104,19 +163,31 @@ class App extends Component<{||}, State> {
             this.setState(state => ({ ...state, blogIdentifier }));
           }}
           onKeyPress={event => {
-            if (event.key === 'Enter') {
-              this.getNewPosts();
+            if (event.key === 'Enter' && !isGetNewPostsPending) {
+              this.setState(
+                state => ({ ...state, active: 0, posts: [] }),
+                () => {
+                  this.getNewPosts();
+                },
+              );
             }
           }}
         />
-        {this.state.posts
+        <Body>
+          {activePostType === 'photo' && <Photo src={activePhotoUrl} />}
+          {activePostType === 'video' && (
+            <Video embedCode={activeVideoEmbedCode} />
+          )}
+        </Body>
+        {/*this.state.posts
           .filter(({ type }) => type === 'photo')
           .map(({ id, photos }) => {
             return photos.map(({ alt_sizes }, i) => {
               return <Photo key={`${id}-${i}`} src={alt_sizes[0].url} />;
             });
-          })}
-      </div>
+          })*/}
+        <Counter>{INITIAL_OFFSET + active}</Counter>
+      </Root>
     );
   }
 }
