@@ -9,14 +9,13 @@ import Video from './Video';
 type State = {|
   active: number,
   blogIdentifier: string,
+  initialOffset: number,
   isGetNewPostsPending: boolean,
   posts: Object[],
 |};
 
 // This is the tumblr image API limit.
 const PAGE_SIZE = 20;
-// Change this if you want to start paginating from a deep offset.
-const INITIAL_OFFSET = 0;
 
 const getPosts = (blogIdentifier: string, offset?: number = 0) => {
   return fetch(
@@ -24,7 +23,7 @@ const getPosts = (blogIdentifier: string, offset?: number = 0) => {
       .env.REACT_APP_API_KEY || ''}&limit=${PAGE_SIZE}&offset=${offset}`,
   )
     .then(res => res.json())
-    .then(json => json.response.posts);
+    .then(json => json.response.posts || []);
 };
 
 const preloadImages = (imageUrls: string[]) => {
@@ -42,6 +41,7 @@ const UI_FONT = `
 `;
 
 const Root = styled.div`
+  align-items: center;
   background: rgb(48, 48, 48);
   display: flex;
   flex-direction: column;
@@ -57,6 +57,13 @@ const Body = styled.div`
   padding: 20px;
 `;
 
+const Container = styled.div`
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 1200px;
+`;
+
 const Counter = styled.div`
   bottom: 0;
   color: LightGray;
@@ -66,13 +73,21 @@ const Counter = styled.div`
   right: 0;
 `;
 
+const Header = styled.div`
+  display: flex;
+  padding: 20px;
+`;
+
 const Input = styled.input`
   border: 1px solid LightGray;
   border-radius: 2px;
   box-sizing: border-box;
   display: block;
   font-family: ${UI_FONT};
+  flex-grow: ${props => (props.primary ? '2' : '1')};
+  flex-basis: 0;
   line-height: 1.375;
+  min-width: 0;
   padding: 5px;
   transition: 150;
   width: 100%;
@@ -83,6 +98,10 @@ const Input = styled.input`
   }
 `;
 
+const Spacer = styled.div`
+  width: 20px;
+`;
+
 class App extends Component<{||}, State> {
   constructor(props: {||}) {
     super(props);
@@ -90,6 +109,7 @@ class App extends Component<{||}, State> {
     this.state = {
       active: 0,
       blogIdentifier: '',
+      initialOffset: 0,
       isGetNewPostsPending: false,
       posts: [],
     };
@@ -105,6 +125,9 @@ class App extends Component<{||}, State> {
 
   onDocumentKeyDown = (event: KeyboardEvent) => {
     const { active, isGetNewPostsPending, posts } = this.state;
+
+    // Bail if this event was triggered in an input.
+    if (event.target instanceof HTMLInputElement) return;
 
     switch (event.key) {
       case 'ArrowRight':
@@ -124,11 +147,24 @@ class App extends Component<{||}, State> {
     }
   };
 
+  onInputEnter = (event: KeyboardEvent) => {
+    const { isGetNewPostsPending } = this.state;
+    if (event.key === 'Enter' && !isGetNewPostsPending) {
+      this.setState(
+        state => ({ ...state, active: 0, posts: [] }),
+        () => {
+          this.getNewPosts();
+        },
+      );
+    }
+  };
+
   getNewPosts = () => {
-    const { blogIdentifier, posts } = this.state;
-    const offset = INITIAL_OFFSET + posts.length;
+    const { blogIdentifier, initialOffset, posts } = this.state;
+    const offset = initialOffset + posts.length;
 
     this.setState(state => ({ ...state, isGetNewPostsPending: true }));
+
     getPosts(blogIdentifier, offset).then(posts => {
       const supportedPosts = posts.filter(
         ({ type }) => type === 'photo' || type === 'video',
@@ -149,7 +185,7 @@ class App extends Component<{||}, State> {
   };
 
   render() {
-    const { active, blogIdentifier, isGetNewPostsPending, posts } = this.state;
+    const { active, blogIdentifier, initialOffset, posts } = this.state;
 
     const activePost = idx(posts, _ => _[active]);
     const activePostType = idx(activePost, _ => _.type);
@@ -161,30 +197,40 @@ class App extends Component<{||}, State> {
 
     return (
       <Root>
-        <Input
-          value={blogIdentifier}
-          onChange={event => {
-            const blogIdentifier = event.target.value;
-            this.setState(state => ({ ...state, blogIdentifier }));
-          }}
-          onKeyPress={event => {
-            if (event.key === 'Enter' && !isGetNewPostsPending) {
-              this.setState(
-                state => ({ ...state, active: 0, posts: [] }),
-                () => {
-                  this.getNewPosts();
-                },
-              );
-            }
-          }}
-        />
-        <Body>
-          {activePostType === 'photo' && <Photo src={activePhotoUrl} />}
-          {activePostType === 'video' && (
-            <Video embedCode={activeVideoEmbedCode} />
-          )}
-        </Body>
-        <Counter>{INITIAL_OFFSET + active}</Counter>
+        <Container>
+          <Header>
+            <Input
+              onChange={event => {
+                const blogIdentifier = event.target.value;
+                this.setState(state => ({ ...state, blogIdentifier }));
+              }}
+              onKeyPress={this.onInputEnter}
+              placeholder="Blog Identifier"
+              primary
+              value={blogIdentifier}
+            />
+            <Spacer />
+            <Input
+              onChange={event => {
+                let initialOffset = parseInt(event.target.value, 10);
+                if (Number.isNaN(initialOffset)) initialOffset = 0;
+                this.setState(state => ({ ...state, initialOffset }));
+              }}
+              onKeyPress={this.onInputEnter}
+              placeholder="Starting Post"
+              title="Starting Post"
+              type="number"
+              value={initialOffset}
+            />
+          </Header>
+          <Body>
+            {activePostType === 'photo' && <Photo src={activePhotoUrl} />}
+            {activePostType === 'video' && (
+              <Video embedCode={activeVideoEmbedCode} />
+            )}
+          </Body>
+        </Container>
+        <Counter>{initialOffset + active}</Counter>
       </Root>
     );
   }
