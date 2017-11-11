@@ -1,10 +1,31 @@
 // @flow
+import React from 'react';
 import styled from 'styled-components';
 
-const Photo = styled.img`
+const Image = styled.img`
   display: block;
-  max-width: 1200px;
   width: 100%;
 `;
+
+const Root = styled.div`
+  position: relative;
+  width: 100%;
+`;
+
+const Frame = styled.div`
+  bottom: 0;
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5);
+  left: 0;
+  position: absolute;
+  right: 0;
+  top: 0;
+`;
+
+const Photo = (props: Object) => (
+  <Root>
+    <Image {...props} />
+    <Frame />
+  </Root>
+);
 
 export default Photo;
