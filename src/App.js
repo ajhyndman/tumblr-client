@@ -106,16 +106,21 @@ class App extends Component<{||}, State> {
   onDocumentKeyDown = (event: KeyboardEvent) => {
     const { active, isGetNewPostsPending, posts } = this.state;
 
-    if (event.key === 'ArrowRight') {
-      // If we're near the end of the list of posts that we already have, fetch more.
-      if (active + 5 >= posts.length && !isGetNewPostsPending)
-        this.getNewPosts();
-      this.setState(state => ({ ...state, active: state.active + 1 }));
-    } else if (event.key === 'ArrowLeft') {
-      this.setState(state => ({
-        ...state,
-        active: Math.max(state.active - 1, 0),
-      }));
+    switch (event.key) {
+      case 'ArrowRight':
+        // If we're near the end of the list of posts that we already have, fetch more.
+        if (active + 5 >= posts.length && !isGetNewPostsPending)
+          this.getNewPosts();
+        this.setState(state => ({ ...state, active: state.active + 1 }));
+        break;
+      case 'ArrowLeft':
+        this.setState(state => ({
+          ...state,
+          active: Math.max(state.active - 1, 0),
+        }));
+        break;
+      default:
+      // do nothing
     }
   };
 
@@ -149,10 +154,10 @@ class App extends Component<{||}, State> {
     const activePost = idx(posts, _ => _[active]);
     const activePostType = idx(activePost, _ => _.type);
     const activePhotoUrl = idx(activePost, _ => _.photos[0].alt_sizes[0].url);
-    const activeVideoEmbedCode = idx(
-      activePost,
-      _ => _.player[_.player.length - 1].embed_code,
-    );
+    const activeVideoPlayerCount = idx(activePost, _ => _.player.length) || 0;
+    const activeVideoEmbedCode =
+      idx(activePost, _ => _.player[activeVideoPlayerCount - 1].embed_code) ||
+      '';
 
     return (
       <Root>
@@ -179,13 +184,6 @@ class App extends Component<{||}, State> {
             <Video embedCode={activeVideoEmbedCode} />
           )}
         </Body>
-        {/*this.state.posts
-          .filter(({ type }) => type === 'photo')
-          .map(({ id, photos }) => {
-            return photos.map(({ alt_sizes }, i) => {
-              return <Photo key={`${id}-${i}`} src={alt_sizes[0].url} />;
-            });
-          })*/}
         <Counter>{INITIAL_OFFSET + active}</Counter>
       </Root>
     );
