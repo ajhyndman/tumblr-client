@@ -16,6 +16,7 @@ const Frame = styled.div`
   bottom: 0;
   box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5);
   left: 0;
+  pointer-events: none;
   position: absolute;
   right: 0;
   top: 0;

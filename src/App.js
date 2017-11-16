@@ -224,7 +224,12 @@ class App extends Component<{||}, State> {
             />
           </Header>
           <Body>
-            {activePostType === 'photo' && <Photo src={activePhotoUrl} />}
+            {activePostType === 'photo' && (
+              <Photo
+                src={activePhotoUrl}
+                title={idx(activePost, _ => _.caption) || ''}
+              />
+            )}
             {activePostType === 'video' && (
               <Video embedCode={activeVideoEmbedCode} />
             )}
