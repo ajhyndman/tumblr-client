@@ -8,6 +8,7 @@ import Video from './Video';
 
 type State = {|
   active: number,
+  autoplayTimer: ?number,
   blogIdentifier: string,
   initialOffset: number,
   isGetNewPostsPending: boolean,
@@ -16,6 +17,8 @@ type State = {|
 
 // This is the tumblr image API limit.
 const PAGE_SIZE = 20;
+// Timeout before moving to next image.
+const AUTOPLAY_INTERVAL = 3000;
 
 const getPosts = (blogIdentifier: string, offset?: number = 0) => {
   return fetch(
@@ -55,6 +58,9 @@ const Body = styled.div`
   flex-grow: 1;
   justify-content: center;
   padding: 20px;
+`;
+
+const Button = styled.button`
 `;
 
 const Container = styled.div`
@@ -103,16 +109,21 @@ const Spacer = styled.div`
 `;
 
 class App extends Component<{||}, State> {
+  toggleAutoplay: () => void;
+
   constructor(props: {||}) {
     super(props);
 
     this.state = {
       active: 0,
+      autoplayTimer: undefined,
       blogIdentifier: '',
       initialOffset: 0,
       isGetNewPostsPending: false,
       posts: [],
     };
+
+    this.toggleAutoplay = this.toggleAutoplay.bind(this);
   }
 
   componentDidMount() {
@@ -131,10 +142,7 @@ class App extends Component<{||}, State> {
 
     switch (event.key) {
       case 'ArrowRight':
-        // If we're near the end of the list of posts that we already have, fetch more.
-        if (active + 5 >= posts.length && !isGetNewPostsPending)
-          this.getNewPosts();
-        this.setState(state => ({ ...state, active: state.active + 1 }));
+        this.next();
         break;
       case 'ArrowLeft':
         this.setState(state => ({
@@ -142,7 +150,12 @@ class App extends Component<{||}, State> {
           active: Math.max(state.active - 1, 0),
         }));
         break;
+      case ' ':
+        event.preventDefault();
+        this.toggleAutoplay();
+        break;
       default:
+        console.log(event.key);
       // do nothing
     }
   };
@@ -184,8 +197,31 @@ class App extends Component<{||}, State> {
     });
   };
 
+  /**
+   * Advance to the next post.
+   */
+  next() {
+    const { active, isGetNewPostsPending, posts } = this.state;
+    // If we're near the end of the list of posts that we already have, fetch more.
+    if (active + 5 >= posts.length && !isGetNewPostsPending)
+      this.getNewPosts();
+    this.setState(state => ({ ...state, active: state.active + 1 }));
+  }
+
+  toggleAutoplay() {
+    if (this.state.autoplayTimer == null) {
+      const autoplayTimer = window.setInterval(() => {
+        this.next();
+      }, AUTOPLAY_INTERVAL);
+      this.setState(state => ({ ...state, autoplayTimer }));
+    } else {
+      window.clearInterval(this.state.autoplayTimer);
+      this.setState(state => ({ ...state, autoplayTimer: undefined }));
+    }
+  }
+
   render() {
-    const { active, blogIdentifier, initialOffset, posts } = this.state;
+    const { active, autoplayTimer, blogIdentifier, initialOffset, posts } = this.state;
 
     const activePost = idx(posts, _ => _[active]);
     const activePostType = idx(activePost, _ => _.type);
@@ -222,6 +258,8 @@ class App extends Component<{||}, State> {
               type="number"
               value={initialOffset}
             />
+            <Spacer />
+            <Button onClick={this.toggleAutoplay}>{autoplayTimer == null ? 'Play' : 'Pause'}</Button>
           </Header>
           <Body>
             {activePostType === 'photo' && (
