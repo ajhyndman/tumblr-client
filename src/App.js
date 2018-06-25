@@ -3,6 +3,7 @@ import React, { Component } from 'react';
 import styled from 'styled-components';
 import idx from 'idx';
 
+import PaginationOverlay from './PaginationOverlay';
 import Photo from './Photo';
 import Video from './Video';
 
@@ -58,6 +59,7 @@ const Body = styled.div`
   flex-grow: 1;
   justify-content: center;
   padding: 20px;
+  position: relative;
 `;
 
 const Button = styled.button`
@@ -110,6 +112,8 @@ const Spacer = styled.div`
 `;
 
 class App extends Component<{||}, State> {
+  next: () => void;
+  previous: () => void;
   toggleAutoplay: () => void;
 
   constructor(props: {||}) {
@@ -124,6 +128,8 @@ class App extends Component<{||}, State> {
       posts: [],
     };
 
+    this.next = this.next.bind(this);
+    this.previous = this.previous.bind(this);
     this.toggleAutoplay = this.toggleAutoplay.bind(this);
   }
 
@@ -146,10 +152,7 @@ class App extends Component<{||}, State> {
         this.next();
         break;
       case 'ArrowLeft':
-        this.setState(state => ({
-          ...state,
-          active: Math.max(state.active - 1, 0),
-        }));
+        this.previous();
         break;
       case ' ':
         event.preventDefault();
@@ -207,6 +210,13 @@ class App extends Component<{||}, State> {
     if (active + 5 >= posts.length && !isGetNewPostsPending)
       this.getNewPosts();
     this.setState(state => ({ ...state, active: state.active + 1 }));
+  }
+
+  previous() {
+    this.setState(state => ({
+      ...state,
+      active: Math.max(state.active - 1, 0),
+    }));
   }
 
   toggleAutoplay() {
@@ -272,6 +282,7 @@ class App extends Component<{||}, State> {
             {activePostType === 'video' && (
               <Video embedCode={activeVideoEmbedCode} />
             )}
+            <PaginationOverlay next={this.next} previous={this.previous} />
           </Body>
         </Container>
         <Counter>{initialOffset + active}</Counter>
