@@ -15,6 +15,7 @@ const Overlay = styled.div`
   bottom: 0;
   left: 0;
   right: 0;
+  pointer-events: none;
 `;
 
 const NavigationButton = styled.button`
@@ -24,6 +25,7 @@ const NavigationButton = styled.button`
   flex-basis: 40%;
   outline: none;
   padding: 0;
+  pointer-events: all;
 `;
 
 const PaginationOverlay = ({ next, previous }: Props) => (
