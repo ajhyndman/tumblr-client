@@ -53,11 +53,11 @@ const Root = styled.div`
 `;
 
 const Body = styled.div`
-  align-items: center;
   box-sizing: border-box;
-  display: flex;
+  display: grid;
   flex-grow: 1;
-  justify-content: center;
+  grid-template-columns: 100%;
+  grid-gap: 20px;
   padding: 20px;
   position: relative;
 `;
@@ -236,7 +236,7 @@ class App extends Component<{||}, State> {
 
     const activePost = idx(posts, _ => _[active]);
     const activePostType = idx(activePost, _ => _.type);
-    const activePhotoUrl = idx(activePost, _ => _.photos[0].alt_sizes[0].url);
+    const activePhotoUrls = (idx(activePost, _ => _.photos) || []).map(photo => photo.alt_sizes[0].url);
     const activeVideoPlayerCount = idx(activePost, _ => _.player.length) || 0;
     const activeVideoEmbedCode =
       idx(activePost, _ => _.player[activeVideoPlayerCount - 1].embed_code) ||
@@ -274,10 +274,9 @@ class App extends Component<{||}, State> {
           </Header>
           <Body>
             {activePostType === 'photo' && (
-              <Photo
-                src={activePhotoUrl}
-                title={idx(activePost, _ => _.caption) || ''}
-              />
+              activePhotoUrls.map(photoUrl => (
+                <Photo src={photoUrl} title={idx(activePost, _ => _.caption) || ''} />
+              ))
             )}
             {activePostType === 'video' && (
               <Video embedCode={activeVideoEmbedCode} />
