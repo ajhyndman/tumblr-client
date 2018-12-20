@@ -5,6 +5,7 @@ import idx from 'idx';
 
 import PaginationOverlay from './PaginationOverlay';
 import Photo from './Photo';
+import Text from './Text';
 import Video from './Video';
 
 type State = {|
@@ -184,7 +185,7 @@ class App extends Component<{||}, State> {
 
     getPosts(blogIdentifier, offset).then(posts => {
       const supportedPosts = posts.filter(
-        ({ type }) => type === 'photo' || type === 'video',
+        ({ type }) => type === 'photo' || type === 'text' || type === 'video',
       );
 
       const imageUrls = posts
@@ -237,6 +238,7 @@ class App extends Component<{||}, State> {
     const activePost = idx(posts, _ => _[active]);
     const activePostType = idx(activePost, _ => _.type);
     const activePhotoUrls = (idx(activePost, _ => _.photos) || []).map(photo => photo.alt_sizes[0].url);
+    const activeTextBody = idx(activePost, _ => _.body)
     const activeVideoPlayerCount = idx(activePost, _ => _.player.length) || 0;
     const activeVideoEmbedCode =
       idx(activePost, _ => _.player[activeVideoPlayerCount - 1].embed_code) ||
@@ -275,8 +277,11 @@ class App extends Component<{||}, State> {
           <Body>
             {activePostType === 'photo' && (
               activePhotoUrls.map(photoUrl => (
-                <Photo src={photoUrl} title={idx(activePost, _ => _.caption) || ''} />
+                <Photo src={photoUrl} caption={idx(activePost, _ => _.caption) || ''} />
               ))
+            )}
+            {activePostType === 'text' && (
+              <Text body={activeTextBody} />
             )}
             {activePostType === 'video' && (
               <Video embedCode={activeVideoEmbedCode} />

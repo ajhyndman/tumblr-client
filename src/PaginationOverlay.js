@@ -22,7 +22,7 @@ const NavigationButton = styled.button`
   background: none;
   border: none;
   cursor: pointer;
-  flex-basis: 40%;
+  flex-basis: 7%;
   outline: none;
   padding: 0;
   pointer-events: all;
