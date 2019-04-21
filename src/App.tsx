@@ -1,7 +1,5 @@
-// @flow
 import React, { Component, Fragment } from 'react';
 import styled from 'styled-components';
-import idx from 'idx';
 
 import HtmlContent from './HtmlContent';
 import PaginationOverlay from './PaginationOverlay';
@@ -9,21 +7,40 @@ import Photo from './Photo';
 import Text from './Text';
 import Video from './Video';
 
-type State = {|
-  active: number,
-  autoplayTimer: ?number,
-  blogIdentifier: string,
-  initialOffset: number,
-  isGetNewPostsPending: boolean,
-  posts: Object[],
-|};
+type Photo = {
+  alt_sizes: { url: string }[];
+};
+
+type Player = {
+  embed_code: string;
+};
+
+type Post = {
+  type: string;
+  body?: string;
+  caption?: string;
+  photos?: Photo[];
+  player?: Player[];
+};
+
+type State = {
+  active: number;
+  autoplayTimer: number | undefined;
+  blogIdentifier: string;
+  initialOffset: number;
+  isGetNewPostsPending: boolean;
+  posts: Post[];
+};
 
 // This is the tumblr image API limit.
 const PAGE_SIZE = 20;
 // Timeout before moving to next image.
 const AUTOPLAY_INTERVAL = 3000;
 
-const getPosts = (blogIdentifier: string, offset?: number = 0) => {
+const getPosts = (
+  blogIdentifier: string,
+  offset: number = 0,
+): Promise<Post[]> => {
   return fetch(
     `https://api.tumblr.com/v2/blog/${blogIdentifier}/posts?api_key=${process
       .env.REACT_APP_API_KEY || ''}&limit=${PAGE_SIZE}&offset=${offset}`,
@@ -64,8 +81,7 @@ const Body = styled.div`
   position: relative;
 `;
 
-const Button = styled.button`
-`;
+const Button = styled.button``;
 
 const Container = styled.div`
   display: flex;
@@ -95,13 +111,17 @@ const Input = styled.input`
   box-sizing: border-box;
   display: block;
   font-family: ${UI_FONT};
-  flex-grow: ${props => (props.primary ? '2' : '1')};
+  flex-grow: 1;
   flex-basis: 0;
   line-height: 1.375;
   min-width: 0;
   padding: 5px;
   transition: 150;
   width: 100%;
+
+  &.primary {
+    flex-grow: 2;
+  }
 
   &:focus {
     border-color: CornflowerBlue;
@@ -113,12 +133,8 @@ const Spacer = styled.div`
   width: 20px;
 `;
 
-class App extends Component<{||}, State> {
-  next: () => void;
-  previous: () => void;
-  toggleAutoplay: () => void;
-
-  constructor(props: {||}) {
+class App extends Component<{}, State> {
+  constructor(props: {}) {
     super(props);
 
     this.state = {
@@ -166,7 +182,7 @@ class App extends Component<{||}, State> {
     }
   };
 
-  onInputEnter = (event: KeyboardEvent) => {
+  onInputEnter = (event: React.KeyboardEvent<HTMLInputElement>) => {
     const { isGetNewPostsPending } = this.state;
     if (event.key === 'Enter' && !isGetNewPostsPending) {
       this.setState(
@@ -191,7 +207,11 @@ class App extends Component<{||}, State> {
 
       const imageUrls = posts
         .filter(({ type }) => type === 'photo')
-        .map(post => idx(post, _ => _.photos[0].alt_sizes[0].url) || '');
+        .map(
+          post =>
+            (((((post || {}).photos || [])[0] || {}).alt_sizes || [])[0] || {})
+              .url || '',
+        );
 
       preloadImages(imageUrls);
 
@@ -209,8 +229,7 @@ class App extends Component<{||}, State> {
   next() {
     const { active, isGetNewPostsPending, posts } = this.state;
     // If we're near the end of the list of posts that we already have, fetch more.
-    if (active + 5 >= posts.length && !isGetNewPostsPending)
-      this.getNewPosts();
+    if (active + 5 >= posts.length && !isGetNewPostsPending) this.getNewPosts();
     this.setState(state => ({ ...state, active: state.active + 1 }));
   }
 
@@ -234,29 +253,39 @@ class App extends Component<{||}, State> {
   }
 
   render() {
-    const { active, autoplayTimer, blogIdentifier, initialOffset, posts } = this.state;
+    const {
+      active,
+      autoplayTimer,
+      blogIdentifier,
+      initialOffset,
+      posts,
+    } = this.state;
 
-    const activePost = idx(posts, _ => _[active]);
-    const activePostType = idx(activePost, _ => _.type);
-    const activePhotoUrls = (idx(activePost, _ => _.photos) || []).map(photo => photo.alt_sizes[0].url);
-    const activeTextBody = idx(activePost, _ => _.body)
-    const activeVideoPlayerCount = idx(activePost, _ => _.player.length) || 0;
-    const activeVideoEmbedCode =
-      idx(activePost, _ => _.player[activeVideoPlayerCount - 1].embed_code) ||
-      '';
+    const activePost = posts[active] || {};
+    const activePostType = activePost.type;
+    const activePhotoUrls = (activePost.photos || []).map(
+      photo => photo.alt_sizes[0].url,
+    );
+    const activeTextBody = activePost.body;
+    const activeVideoPlayerCount = (activePost.player || []).length || 0;
+    const activeVideoEmbedCode = (
+      (activePost.player || [])[activeVideoPlayerCount - 1] || {
+        embed_code: '',
+      }
+    ).embed_code;
 
     return (
       <Root>
         <Container>
           <Header>
             <Input
+              className="primary"
               onChange={event => {
                 const blogIdentifier = event.target.value;
                 this.setState(state => ({ ...state, blogIdentifier }));
               }}
               onKeyPress={this.onInputEnter}
               placeholder="Blog Identifier"
-              primary
               value={blogIdentifier}
             />
             <Spacer />
@@ -273,7 +302,9 @@ class App extends Component<{||}, State> {
               value={initialOffset}
             />
             <Spacer />
-            <Button onClick={this.toggleAutoplay}>{autoplayTimer == null ? 'Play' : 'Pause'}</Button>
+            <Button onClick={this.toggleAutoplay}>
+              {autoplayTimer == null ? 'Play' : 'Pause'}
+            </Button>
           </Header>
           <Body>
             {activePostType === 'photo' && (
@@ -281,12 +312,10 @@ class App extends Component<{||}, State> {
                 {activePhotoUrls.map(photoUrl => (
                   <Photo key={photoUrl} src={photoUrl} />
                 ))}
-                <HtmlContent html={idx(activePost, _ => _.caption) || ''} />
+                <HtmlContent html={activePost.caption || ''} />
               </Fragment>
             )}
-            {activePostType === 'text' && (
-              <Text body={activeTextBody} />
-            )}
+            {activePostType === 'text' && <Text body={activeTextBody} />}
             {activePostType === 'video' && (
               <Video embedCode={activeVideoEmbedCode} />
             )}

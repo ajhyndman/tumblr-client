@@ -1,13 +1,18 @@
 import React from 'react';
 import styled from 'styled-components';
 
+type Props = {
+  html: string;
+};
+
 const Root = styled.div`
   color: white;
-
   a {
     color: #ddd;
 
-    &:visited: #aaa;
+    &:visited {
+      color: #aaa;
+    }
   }
 
   figure {
@@ -17,7 +22,7 @@ const Root = styled.div`
     &::after {
       bottom: 0;
       box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.9);
-      content: "";
+      content: '';
       display: block;
       left: 0;
       pointer-events: none;
@@ -38,10 +43,12 @@ const Root = styled.div`
   }
 `;
 
-const HtmlContent = ({ html }) => <Root
-  dangerouslySetInnerHTML={{
-    __html: html.replace('<video', '<video controls loop autoplay'),
-  }}
-/>
+const HtmlContent = ({ html }: Props) => (
+  <Root
+    dangerouslySetInnerHTML={{
+      __html: html.replace('<video', '<video controls loop autoplay'),
+    }}
+  />
+);
 
-export default HtmlContent
+export default HtmlContent;

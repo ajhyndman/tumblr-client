@@ -1,11 +1,10 @@
-// @flow
 import React from 'react';
 import styled from 'styled-components';
 
-type Props = {|
-  next: () => void,
-  previous: () => void,
-|};
+type Props = {
+  next: () => void;
+  previous: () => void;
+};
 
 const Overlay = styled.div`
   display: flex;

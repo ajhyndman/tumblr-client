@@ -1,6 +1,7 @@
-// @flow
-import React from 'react';
+import React, { ImgHTMLAttributes } from 'react';
 import styled from 'styled-components';
+
+type Props = ImgHTMLAttributes<any>;
 
 const Image = styled.img`
   display: block;
@@ -24,11 +25,11 @@ const Frame = styled.div`
   top: 0;
 `;
 
-const Photo = (props: Object) => (
+const Photo = (props: Props) => (
   <Root>
     <ImageContainer>
-    <Image {...props} />
-    <Frame />
+      <Image {...props} />
+      <Frame />
     </ImageContainer>
   </Root>
 );

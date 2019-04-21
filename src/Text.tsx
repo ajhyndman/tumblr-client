@@ -1,11 +1,10 @@
-// @flow
 import React from 'react';
 import styled from 'styled-components';
 
 import HtmlContent from './HtmlContent';
 
 type Props = {
-  body: string | void,
+  body: string | void;
 };
 
 const Root = styled.div`
