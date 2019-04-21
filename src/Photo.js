@@ -2,8 +2,6 @@
 import React from 'react';
 import styled from 'styled-components';
 
-import HtmlContent from './HtmlContent';
-
 const Image = styled.img`
   display: block;
   width: 100%;
@@ -26,13 +24,12 @@ const Frame = styled.div`
   top: 0;
 `;
 
-const Photo = ({ caption, ...rest }: Object) => (
+const Photo = (props: Object) => (
   <Root>
     <ImageContainer>
-    <Image {...rest} />
+    <Image {...props} />
     <Frame />
     </ImageContainer>
-    <HtmlContent html={caption} />
   </Root>
 );
 

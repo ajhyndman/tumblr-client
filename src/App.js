@@ -3,6 +3,7 @@ import React, { Component } from 'react';
 import styled from 'styled-components';
 import idx from 'idx';
 
+import HtmlContent from './HtmlContent';
 import PaginationOverlay from './PaginationOverlay';
 import Photo from './Photo';
 import Text from './Text';
@@ -276,9 +277,12 @@ class App extends Component<{||}, State> {
           </Header>
           <Body>
             {activePostType === 'photo' && (
-              activePhotoUrls.map(photoUrl => (
-                <Photo src={photoUrl} caption={idx(activePost, _ => _.caption) || ''} />
-              ))
+              [
+                ...activePhotoUrls.map(photoUrl => (
+                  <Photo src={photoUrl} />
+                )),
+                <HtmlContent html={idx(activePost, _ => _.caption) || ''} />
+              ]
             )}
             {activePostType === 'text' && (
               <Text body={activeTextBody} />
