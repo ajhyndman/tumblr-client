@@ -1,5 +1,5 @@
 // @flow
-import React, { Component } from 'react';
+import React, { Component, Fragment } from 'react';
 import styled from 'styled-components';
 import idx from 'idx';
 
@@ -277,12 +277,12 @@ class App extends Component<{||}, State> {
           </Header>
           <Body>
             {activePostType === 'photo' && (
-              [
-                ...activePhotoUrls.map(photoUrl => (
-                  <Photo src={photoUrl} />
-                )),
+              <Fragment>
+                {activePhotoUrls.map(photoUrl => (
+                  <Photo key={photoUrl} src={photoUrl} />
+                ))}
                 <HtmlContent html={idx(activePost, _ => _.caption) || ''} />
-              ]
+              </Fragment>
             )}
             {activePostType === 'text' && (
               <Text body={activeTextBody} />
