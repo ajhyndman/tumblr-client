@@ -1,9 +1,8 @@
-// @flow
 import React from 'react';
 import styled from 'styled-components';
 
 type Props = {
-  embedCode: string | void,
+  embedCode?: string;
 };
 
 const Root = styled.div`
