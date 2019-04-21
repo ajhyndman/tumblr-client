@@ -16,12 +16,10 @@
     "build": "react-scripts build",
     "deploy": "now -e REACT_APP_API_KEY=@tumblr-api-key -e REACT_APP_API_SECRET=@tumblr-api-secret",
     "eject": "react-scripts eject",
-    "flow": "flow check",
     "start": "react-scripts start",
     "test": "react-scripts test --env=jsdom"
   },
   "devDependencies": {
-    "flow-bin": "^0.59.0",
     "prettier": "^1.8.2"
   },
   "browserslist": [
