@@ -1,0 +1,16 @@
+{
+  "version": 2,
+  "build": {
+    "env": {
+      "REACT_APP_API_KEY": "@tumblr-api-key",
+      "REACT_APP_API_SECRET": "@tumblr-api-secret"
+    }
+  },
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@now/static-build",
+      "config": { "distDir": "build" }
+    }
+  ]
+}
