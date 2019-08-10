@@ -1,4 +1,4 @@
-import React, { Component, Fragment } from 'react';
+import React, { Fragment, useCallback, useEffect, useState } from 'react';
 import styled from 'styled-components';
 
 import HtmlContent from './HtmlContent';
@@ -133,72 +133,21 @@ const Spacer = styled.div`
   width: 20px;
 `;
 
-class App extends Component<{}, State> {
-  constructor(props: {}) {
-    super(props);
+const App = () => {
+  const [state, setState] = useState<State>({
+    active: 0,
+    autoplayTimer: undefined,
+    blogIdentifier: '',
+    initialOffset: 0,
+    isGetNewPostsPending: false,
+    posts: [],
+  });
 
-    this.state = {
-      active: 0,
-      autoplayTimer: undefined,
-      blogIdentifier: '',
-      initialOffset: 0,
-      isGetNewPostsPending: false,
-      posts: [],
-    };
-
-    this.next = this.next.bind(this);
-    this.previous = this.previous.bind(this);
-    this.toggleAutoplay = this.toggleAutoplay.bind(this);
-  }
-
-  componentDidMount() {
-    document.addEventListener('keydown', this.onDocumentKeyDown);
-  }
-
-  componentWillUnmount() {
-    document.removeEventListener('keydown', this.onDocumentKeyDown);
-  }
-
-  onDocumentKeyDown = (event: KeyboardEvent) => {
-    const { active, isGetNewPostsPending, posts } = this.state;
-
-    // Bail if this event was triggered in an input.
-    if (event.target instanceof HTMLInputElement) return;
-
-    switch (event.key) {
-      case 'ArrowRight':
-        this.next();
-        break;
-      case 'ArrowLeft':
-        this.previous();
-        break;
-      case ' ':
-        event.preventDefault();
-        this.toggleAutoplay();
-        break;
-      default:
-        console.log(event.key);
-      // do nothing
-    }
-  };
-
-  onInputEnter = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    const { isGetNewPostsPending } = this.state;
-    if (event.key === 'Enter' && !isGetNewPostsPending) {
-      this.setState(
-        state => ({ ...state, active: 0, posts: [] }),
-        () => {
-          this.getNewPosts();
-        },
-      );
-    }
-  };
-
-  getNewPosts = () => {
-    const { blogIdentifier, initialOffset, posts } = this.state;
+  const getNewPosts = useCallback(() => {
+    const { blogIdentifier, initialOffset, posts } = state;
     const offset = initialOffset + posts.length;
 
-    this.setState(state => ({ ...state, isGetNewPostsPending: true }));
+    setState(state => ({ ...state, isGetNewPostsPending: true }));
 
     getPosts(blogIdentifier, offset).then(posts => {
       const supportedPosts = posts.filter(
@@ -215,117 +164,155 @@ class App extends Component<{}, State> {
 
       preloadImages(imageUrls);
 
-      this.setState(state => ({
+      setState(state => ({
         ...state,
         isGetNewPostsPending: false,
         posts: [...state.posts, ...supportedPosts],
       }));
     });
-  };
+  }, [state]);
+
+  const onInputEnter = useCallback(
+    (event: React.KeyboardEvent<HTMLInputElement>) => {
+      const { isGetNewPostsPending } = state;
+      if (event.key === 'Enter' && !isGetNewPostsPending) {
+        setState(state => ({ ...state, active: 0, posts: [] }));
+        // trigger fetch _after_ state has updated.
+        setTimeout(() => getNewPosts());
+      }
+    },
+    [state, getNewPosts],
+  );
 
   /**
    * Advance to the next post.
    */
-  next() {
-    const { active, isGetNewPostsPending, posts } = this.state;
+  const next = useCallback(() => {
+    const { active, isGetNewPostsPending, posts } = state;
     // If we're near the end of the list of posts that we already have, fetch more.
-    if (active + 5 >= posts.length && !isGetNewPostsPending) this.getNewPosts();
-    this.setState(state => ({ ...state, active: state.active + 1 }));
-  }
+    if (active + 5 >= posts.length && !isGetNewPostsPending) getNewPosts();
+    setState(state => ({ ...state, active: state.active + 1 }));
+  }, [getNewPosts, state]);
 
-  previous() {
-    this.setState(state => ({
+  /**
+   * Retreat to the previous post.
+   */
+  const previous = useCallback(() => {
+    setState(state => ({
       ...state,
       active: Math.max(state.active - 1, 0),
     }));
-  }
+  }, []);
 
-  toggleAutoplay() {
-    if (this.state.autoplayTimer == null) {
+  const toggleAutoplay = useCallback(() => {
+    if (state.autoplayTimer == null) {
       const autoplayTimer = window.setInterval(() => {
-        this.next();
+        next();
       }, AUTOPLAY_INTERVAL);
-      this.setState(state => ({ ...state, autoplayTimer }));
+      setState(state => ({ ...state, autoplayTimer }));
     } else {
-      window.clearInterval(this.state.autoplayTimer);
-      this.setState(state => ({ ...state, autoplayTimer: undefined }));
+      window.clearInterval(state.autoplayTimer);
+      setState(state => ({ ...state, autoplayTimer: undefined }));
     }
-  }
+  }, [next, state]);
 
-  render() {
-    const {
-      active,
-      autoplayTimer,
-      blogIdentifier,
-      initialOffset,
-      posts,
-    } = this.state;
+  const onDocumentKeyDown = useCallback(
+    (event: KeyboardEvent) => {
+      // Bail if this event was triggered in an input.
+      if (event.target instanceof HTMLInputElement) return;
 
-    const activePost = posts[active] || {};
-    const activePostType = activePost.type;
-    const activePhotoUrls = (activePost.photos || []).map(
-      photo => photo.alt_sizes[0].url,
-    );
-    const activeTextBody = activePost.body;
-    const activeVideoPlayerCount = (activePost.player || []).length || 0;
-    const activeVideoEmbedCode = (
-      (activePost.player || [])[activeVideoPlayerCount - 1] || {
-        embed_code: '',
+      switch (event.key) {
+        case 'ArrowRight':
+          next();
+          break;
+        case 'ArrowLeft':
+          previous();
+          break;
+        case ' ':
+          event.preventDefault();
+          toggleAutoplay();
+          break;
+        default:
+          console.log(event.key);
+        // do nothing
       }
-    ).embed_code;
+    },
+    [next, previous, toggleAutoplay],
+  );
 
-    return (
-      <Root>
-        <Container>
-          <Header>
-            <Input
-              className="primary"
-              onChange={event => {
-                const blogIdentifier = event.target.value;
-                this.setState(state => ({ ...state, blogIdentifier }));
-              }}
-              onKeyPress={this.onInputEnter}
-              placeholder="Blog Identifier"
-              value={blogIdentifier}
-            />
-            <Spacer />
-            <Input
-              onChange={event => {
-                let initialOffset = parseInt(event.target.value, 10);
-                if (Number.isNaN(initialOffset)) initialOffset = 0;
-                this.setState(state => ({ ...state, initialOffset }));
-              }}
-              onKeyPress={this.onInputEnter}
-              placeholder="Starting Post"
-              title="Starting Post"
-              type="number"
-              value={initialOffset}
-            />
-            <Spacer />
-            <Button onClick={this.toggleAutoplay}>
-              {autoplayTimer == null ? 'Play' : 'Pause'}
-            </Button>
-          </Header>
-          <Body>
-            {activePostType === 'photo' && (
-              <Fragment>
-                {activePhotoUrls.map(photoUrl => (
-                  <Photo key={photoUrl} src={photoUrl} />
-                ))}
-                <HtmlContent html={activePost.caption || ''} />
-              </Fragment>
-            )}
-            {activePostType === 'text' && <Text body={activeTextBody} />}
-            {activePostType === 'video' && (
-              <Video embedCode={activeVideoEmbedCode} />
-            )}
-            <PaginationOverlay next={this.next} previous={this.previous} />
-          </Body>
-        </Container>
-        <Counter>{initialOffset + active}</Counter>
-      </Root>
-    );
-  }
-}
+  useEffect(() => {
+    document.addEventListener('keydown', onDocumentKeyDown);
+    return () => {
+      document.removeEventListener('keydown', onDocumentKeyDown);
+    };
+  }, [onDocumentKeyDown]);
+
+  const { active, autoplayTimer, blogIdentifier, initialOffset, posts } = state;
+
+  const activePost = posts[active] || {};
+  const activePostType = activePost.type;
+  const activePhotoUrls = (activePost.photos || []).map(
+    photo => photo.alt_sizes[0].url,
+  );
+  const activeTextBody = activePost.body;
+  const activeVideoPlayerCount = (activePost.player || []).length || 0;
+  const activeVideoEmbedCode = (
+    (activePost.player || [])[activeVideoPlayerCount - 1] || {
+      embed_code: '',
+    }
+  ).embed_code;
+
+  return (
+    <Root>
+      <Container>
+        <Header>
+          <Input
+            className="primary"
+            onChange={event => {
+              const blogIdentifier = event.target.value;
+              setState(state => ({ ...state, blogIdentifier }));
+            }}
+            onKeyPress={onInputEnter}
+            placeholder="Blog Identifier"
+            value={blogIdentifier}
+          />
+          <Spacer />
+          <Input
+            onChange={event => {
+              let initialOffset = parseInt(event.target.value, 10);
+              if (Number.isNaN(initialOffset)) initialOffset = 0;
+              setState(state => ({ ...state, initialOffset }));
+            }}
+            onKeyPress={onInputEnter}
+            placeholder="Starting Post"
+            title="Starting Post"
+            type="number"
+            value={initialOffset}
+          />
+          <Spacer />
+          <Button onClick={toggleAutoplay}>
+            {autoplayTimer == null ? 'Play' : 'Pause'}
+          </Button>
+        </Header>
+        <Body>
+          {activePostType === 'photo' && (
+            <Fragment>
+              {activePhotoUrls.map(photoUrl => (
+                <Photo key={photoUrl} src={photoUrl} />
+              ))}
+              <HtmlContent html={activePost.caption || ''} />
+            </Fragment>
+          )}
+          {activePostType === 'text' && <Text body={activeTextBody} />}
+          {activePostType === 'video' && (
+            <Video embedCode={activeVideoEmbedCode} />
+          )}
+          <PaginationOverlay next={next} previous={previous} />
+        </Body>
+      </Container>
+      <Counter>{initialOffset + active}</Counter>
+    </Root>
+  );
+};
 
 export default App;
