@@ -267,6 +267,7 @@ const App = () => {
       <Container>
         <Header>
           <Input
+            autoCapitalize="off"
             className="primary"
             onChange={event => {
               const blogIdentifier = event.target.value;
