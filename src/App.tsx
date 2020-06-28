@@ -80,7 +80,12 @@ const Body = styled.div`
   position: relative;
 `;
 
-const Button = styled.button``;
+const Button = styled.button`
+  font-size: 1.25rem;
+  border: none;
+  border-radius: 2px;
+  box-shadow: none;
+`;
 
 const Container = styled.div`
   display: flex;
@@ -105,16 +110,17 @@ const Header = styled.div`
 `;
 
 const Input = styled.input`
-  border: 1px solid LightGray;
+  border: none;
   border-radius: 2px;
   box-sizing: border-box;
   display: block;
   font-family: ${UI_FONT};
   flex-grow: 1;
   flex-basis: 0;
+  font-size: 1.25rem;
   line-height: 1.375;
   min-width: 0;
-  padding: 5px;
+  padding: 5px 10px;
   transition: 150;
   width: 100%;
 
