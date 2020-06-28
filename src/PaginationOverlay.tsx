@@ -7,8 +7,6 @@ type Props = {
 };
 
 const Overlay = styled.div`
-  display: flex;
-  justify-content: space-between;
   position: absolute;
   top: 0;
   bottom: 0;
@@ -17,20 +15,42 @@ const Overlay = styled.div`
   pointer-events: none;
 `;
 
-const NavigationButton = styled.button`
-  background: none;
+const NavigationButton = styled.div`
   border: none;
   cursor: pointer;
-  flex-basis: 7%;
+  display: block;
   outline: none;
   padding: 0;
   pointer-events: all;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+`;
+
+const NavigationButtonLeft = styled(NavigationButton)`
+  left: calc(-50vw + 50%);
+  right: 93%;
+`;
+
+const NavigationButtonRight = styled(NavigationButton)`
+  right: calc(-50vw + 50%);
+  left: 93%;
 `;
 
 const PaginationOverlay = ({ next, previous }: Props) => (
   <Overlay>
-    <NavigationButton onClick={previous} title="previous" />
-    <NavigationButton onClick={next} title="next" />
+    <NavigationButtonLeft
+      tabIndex={0}
+      role="button"
+      onClick={previous}
+      title="previous"
+    />
+    <NavigationButtonRight
+      tabIndex={0}
+      role="button"
+      onClick={next}
+      title="next"
+    />
   </Overlay>
 );
 
