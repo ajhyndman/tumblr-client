@@ -189,25 +189,36 @@ const App = () => {
     [state, getNewPosts],
   );
 
+  const clearAutoplay = useCallback(() => {
+    if (state.autoplayTimer != null) {
+      window.clearInterval(state.autoplayTimer);
+      setState(state => ({ ...state, autoplayTimer: undefined }));
+    }
+  }, [state]);
+
   /**
    * Advance to the next post.
    */
   const next = useCallback(() => {
+    clearAutoplay();
+
     const { active, isGetNewPostsPending, posts } = state;
     // If we're near the end of the list of posts that we already have, fetch more.
     if (active + 5 >= posts.length && !isGetNewPostsPending) getNewPosts();
     setState(state => ({ ...state, active: state.active + 1 }));
-  }, [getNewPosts, state]);
+  }, [getNewPosts, state, clearAutoplay]);
 
   /**
    * Retreat to the previous post.
    */
   const previous = useCallback(() => {
+    clearAutoplay();
+
     setState(state => ({
       ...state,
       active: Math.max(state.active - 1, 0),
     }));
-  }, []);
+  }, [clearAutoplay]);
 
   const toggleAutoplay = useCallback(() => {
     if (state.autoplayTimer == null) {
@@ -216,10 +227,9 @@ const App = () => {
       }, AUTOPLAY_INTERVAL);
       setState(state => ({ ...state, autoplayTimer }));
     } else {
-      window.clearInterval(state.autoplayTimer);
-      setState(state => ({ ...state, autoplayTimer: undefined }));
+      clearAutoplay();
     }
-  }, [next, state]);
+  }, [next, state, clearAutoplay]);
 
   const onDocumentKeyDown = useCallback(
     (event: KeyboardEvent) => {
