@@ -65,7 +65,6 @@ const UI_FONT = `
 
 const Root = styled.div`
   align-items: center;
-  background: rgb(48, 48, 48);
   display: flex;
   flex-direction: column;
   min-height: 100vh;
