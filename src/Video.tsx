@@ -1,9 +1,15 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { Helmet } from 'react-helmet';
 import styled from 'styled-components';
 
 type Props = {
   embedCode?: string;
 };
+
+// Insttagram global injected by script below.
+declare global {
+  var instgrm: any;
+}
 
 const Root = styled.div`
   display: flex;
@@ -19,12 +25,25 @@ const Root = styled.div`
   }
 `;
 
-const Video = ({ embedCode = '' }: Props) => (
-  <Root
-    dangerouslySetInnerHTML={{
-      __html: embedCode.replace('<video', '<video controls loop autoplay'),
-    }}
-  />
-);
+const Video = ({ embedCode = '' }: Props) => {
+  useEffect(() => {
+    if (window.instgrm != null) {
+      window.instgrm.Embeds.process();
+    }
+  }, []);
+
+  return (
+    <>
+      <Helmet>
+        <script defer async src="//www.instagram.com/embed.js" />
+      </Helmet>
+      <Root
+        dangerouslySetInnerHTML={{
+          __html: embedCode.replace('<video', '<video controls loop autoplay'),
+        }}
+      />
+    </>
+  );
+};
 
 export default Video;
