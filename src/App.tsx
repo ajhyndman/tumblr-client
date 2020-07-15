@@ -16,6 +16,8 @@ type Player = {
 };
 
 type Post = {
+  id: string;
+  reblog_key: string;
   type: string;
   body?: string;
   caption?: string;
@@ -37,6 +39,16 @@ const PAGE_SIZE = 20;
 // Timeout before moving to next image.
 const AUTOPLAY_INTERVAL = 3000;
 
+const client = tumblr.createClient({
+  credentials: {
+    consumer_key: process.env.REACT_APP_API_KEY,
+    consumer_secret: process.env.REACT_APP_API_SECRET,
+    token: process.env.REACT_APP_TOKEN,
+    token_secret: process.env.REACT_APP_TOKEN_SECRET,
+  },
+  returnPromises: true,
+});
+
 const getPosts = (
   blogIdentifier: string,
   offset: number = 0,
@@ -47,6 +59,17 @@ const getPosts = (
   )
     .then(res => res.json())
     .then(json => json.response.posts || []);
+};
+
+const likePost = (postId: string, reblogKey: string) => {
+  // return client.likePost({ id: postId, reblog_key: reblogKey }, () => {});
+  return fetch(
+    `https://api.tumblr.com/v2/user/like?id=${postId}&reblog_key=${reblogKey}&api_key=${process
+      .env.REACT_APP_API_KEY || ''}`,
+    {
+      method: 'POST',
+    },
+  );
 };
 
 const preloadImages = (imageUrls: string[]) => {
@@ -308,6 +331,11 @@ const App = () => {
           <Spacer />
           <Button onClick={toggleAutoplay}>
             {autoplayTimer == null ? 'Play' : 'Pause'}
+          </Button>
+          <Button
+            onClick={() => likePost(activePost.id, activePost.reblog_key)}
+          >
+            Like
           </Button>
         </Header>
         <Body>
