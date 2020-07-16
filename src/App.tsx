@@ -1,3 +1,5 @@
+import CryptoJS from 'crypto-js';
+import OAuth from 'oauth-1.0a';
 import React, { Fragment, useCallback, useEffect, useState } from 'react';
 import styled from 'styled-components';
 
@@ -16,7 +18,7 @@ type Player = {
 };
 
 type Post = {
-  id: string;
+  id: number;
   reblog_key: string;
   type: string;
   body?: string;
@@ -39,15 +41,31 @@ const PAGE_SIZE = 20;
 // Timeout before moving to next image.
 const AUTOPLAY_INTERVAL = 3000;
 
-const client = tumblr.createClient({
-  credentials: {
-    consumer_key: process.env.REACT_APP_API_KEY,
-    consumer_secret: process.env.REACT_APP_API_SECRET,
-    token: process.env.REACT_APP_TOKEN,
-    token_secret: process.env.REACT_APP_TOKEN_SECRET,
+// const client = tumblr.createClient({
+//   credentials: {
+//     consumer_key: process.env.REACT_APP_API_KEY,
+//     consumer_secret: process.env.REACT_APP_API_SECRET,
+//     token: process.env.REACT_APP_TOKEN,
+//     token_secret: process.env.REACT_APP_TOKEN_SECRET,
+//   },
+//   returnPromises: true,
+// });
+
+const oauth = new OAuth({
+  consumer: {
+    key: process.env.REACT_APP_API_KEY!,
+    secret: process.env.REACT_APP_API_SECRET!,
   },
-  returnPromises: true,
+  signature_method: 'HMAC-SHA1',
+  hash_function(base_string, key) {
+    return CryptoJS.HmacSHA1(base_string, key).toString(CryptoJS.enc.Base64);
+  },
 });
+
+const token = {
+  key: process.env.REACT_APP_TOKEN!,
+  secret: process.env.REACT_APP_TOKEN_SECRET!,
+};
 
 const getPosts = (
   blogIdentifier: string,
@@ -61,15 +79,43 @@ const getPosts = (
     .then(json => json.response.posts || []);
 };
 
-const likePost = (postId: string, reblogKey: string) => {
-  // return client.likePost({ id: postId, reblog_key: reblogKey }, () => {});
-  return fetch(
-    `https://api.tumblr.com/v2/user/like?id=${postId}&reblog_key=${reblogKey}&api_key=${process
-      .env.REACT_APP_API_KEY || ''}`,
-    {
-      method: 'POST',
+const likePost = (postId: number, reblogKey: string) => {
+  const params = {
+    id: JSON.stringify(postId),
+    reblog_key: reblogKey,
+  };
+
+  // const searchString = new URLSearchParams(params).toString();
+
+  const requestData = {
+    // url: `/v2/user/like?${searchString}`,
+    url: 'https://api.tumblr.com/v2/user/like',
+    method: 'POST',
+    data: params,
+  };
+
+  // const formData = new FormData();
+  // Object.entries(requestData.data).forEach(([key, value]) => {
+  //   formData.append(key, value);
+  // });
+  // Object.entries(oauth.authorize(requestData, token)).forEach(
+  //   ([key, value]) => {
+  //     formData.append(key, value);
+  //   },
+  // );
+
+  return fetch(requestData.url, {
+    method: requestData.method,
+    // credentials: 'include',
+    headers: {
+      // 'content-type': 'application/x-www-form-urlencoded',
+      'content-type': 'application/json',
+      // ...oauth.toHeader(oauth.authorize(requestData, token)),
     },
-  );
+    // body: JSON.stringify(requestData.data),
+    body: JSON.stringify(oauth.authorize(requestData, token)),
+    // body: oauth.authorize(requestData, token),
+  });
 };
 
 const preloadImages = (imageUrls: string[]) => {
@@ -171,7 +217,7 @@ const App = () => {
     posts: [],
   });
 
-  const getNewPosts = useCallback(() => {
+  const getNewPosts = useCallback((state: State) => {
     const { blogIdentifier, initialOffset, posts } = state;
     const offset = initialOffset + posts.length;
 
@@ -198,7 +244,7 @@ const App = () => {
         posts: [...state.posts, ...supportedPosts],
       }));
     });
-  }, [state]);
+  }, []);
 
   const onInputEnter = useCallback(
     (event: React.KeyboardEvent<HTMLInputElement>) => {
@@ -206,7 +252,7 @@ const App = () => {
       if (event.key === 'Enter' && !isGetNewPostsPending) {
         setState(state => ({ ...state, active: 0, posts: [] }));
         // trigger fetch _after_ state has updated.
-        setTimeout(() => getNewPosts());
+        setTimeout(() => getNewPosts({ ...state, active: 0, posts: [] }));
       }
     },
     [state, getNewPosts],
@@ -227,7 +273,7 @@ const App = () => {
 
     const { active, isGetNewPostsPending, posts } = state;
     // If we're near the end of the list of posts that we already have, fetch more.
-    if (active + 5 >= posts.length && !isGetNewPostsPending) getNewPosts();
+    if (active + 5 >= posts.length && !isGetNewPostsPending) getNewPosts(state);
     setState(state => ({ ...state, active: state.active + 1 }));
   }, [getNewPosts, state, clearAutoplay]);
 
