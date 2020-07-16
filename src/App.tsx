@@ -18,7 +18,7 @@ type Player = {
 };
 
 type Post = {
-  id: number;
+  id_string: string;
   reblog_key: string;
   type: string;
   body?: string;
@@ -79,9 +79,9 @@ const getPosts = (
     .then(json => json.response.posts || []);
 };
 
-const likePost = (postId: number, reblogKey: string) => {
+const likePost = (postId: string, reblogKey: string) => {
   const params = {
-    id: JSON.stringify(postId),
+    id: postId,
     reblog_key: reblogKey,
   };
 
@@ -109,11 +109,11 @@ const likePost = (postId: number, reblogKey: string) => {
     // credentials: 'include',
     headers: {
       // 'content-type': 'application/x-www-form-urlencoded',
-      'content-type': 'application/json',
-      // ...oauth.toHeader(oauth.authorize(requestData, token)),
+      'content-type': 'application/json; charset=utf8',
+      ...oauth.toHeader(oauth.authorize(requestData, token)),
     },
-    // body: JSON.stringify(requestData.data),
-    body: JSON.stringify(oauth.authorize(requestData, token)),
+    body: JSON.stringify(requestData.data),
+    // body: JSON.stringify(oauth.authorize(requestData, token)),
     // body: oauth.authorize(requestData, token),
   });
 };
@@ -379,7 +379,9 @@ const App = () => {
             {autoplayTimer == null ? 'Play' : 'Pause'}
           </Button>
           <Button
-            onClick={() => likePost(activePost.id, activePost.reblog_key)}
+            onClick={() =>
+              likePost(activePost.id_string, activePost.reblog_key)
+            }
           >
             Like
           </Button>
