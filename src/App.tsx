@@ -59,6 +59,14 @@ const getPosts = (
     .then(json => json.response.posts || []);
 };
 
+const getLikes = (offset: number = 0): Promise<Post[]> => {
+  return fetchSigned(
+    `https://api.tumblr.com/v2/user/likes?limit=${PAGE_SIZE}&offset=${offset}`,
+  )
+    .then(res => res.json())
+    .then(json => json.response.liked_posts);
+};
+
 const likePost = (postId: string, reblogKey: string) => {
   const params = {
     id: postId,
@@ -188,33 +196,36 @@ const App = () => {
     posts: [],
   });
 
-  const getNewPosts = useCallback((state: State) => {
-    const { blogIdentifier, initialOffset, posts } = state;
-    const offset = initialOffset + posts.length;
+  const getNewPosts = useCallback(async (state: State) => {
+    const { blogIdentifier, initialOffset } = state;
+    const offset = initialOffset + state.posts.length;
 
     setState(state => ({ ...state, isGetNewPostsPending: true }));
 
-    getPosts(blogIdentifier, offset).then(posts => {
-      const supportedPosts = posts.filter(
-        ({ type }) => type === 'photo' || type === 'text' || type === 'video',
+    const posts =
+      blogIdentifier === '#likes'
+        ? await getLikes(offset)
+        : await getPosts(blogIdentifier, offset);
+
+    const supportedPosts = posts.filter(
+      ({ type }) => type === 'photo' || type === 'text' || type === 'video',
+    );
+
+    const imageUrls = posts
+      .filter(({ type }) => type === 'photo')
+      .map(
+        post =>
+          (((((post || {}).photos || [])[0] || {}).alt_sizes || [])[0] || {})
+            .url || '',
       );
 
-      const imageUrls = posts
-        .filter(({ type }) => type === 'photo')
-        .map(
-          post =>
-            (((((post || {}).photos || [])[0] || {}).alt_sizes || [])[0] || {})
-              .url || '',
-        );
+    preloadImages(imageUrls);
 
-      preloadImages(imageUrls);
-
-      setState(state => ({
-        ...state,
-        isGetNewPostsPending: false,
-        posts: [...state.posts, ...supportedPosts],
-      }));
-    });
+    setState(state => ({
+      ...state,
+      isGetNewPostsPending: false,
+      posts: [...state.posts, ...supportedPosts],
+    }));
   }, []);
 
   const updatePost = useCallback(
