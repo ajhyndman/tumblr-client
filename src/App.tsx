@@ -1,5 +1,3 @@
-import CryptoJS from 'crypto-js';
-import OAuth from 'oauth-1.0a';
 import React, { Fragment, useCallback, useEffect, useState } from 'react';
 import styled from 'styled-components';
 
@@ -8,6 +6,7 @@ import PaginationOverlay from './PaginationOverlay';
 import Photo from './Photo';
 import Text from './Text';
 import Video from './Video';
+import { fetchSigned } from './util/fetchSigned';
 
 type Photo = {
   alt_sizes: { url: string }[];
@@ -21,6 +20,7 @@ type Post = {
   id_string: string;
   reblog_key: string;
   type: string;
+  liked: boolean;
   body?: string;
   caption?: string;
   photos?: Photo[];
@@ -36,42 +36,22 @@ type State = {
   posts: Post[];
 };
 
+type RequestData = {
+  url: string;
+  method: string;
+  data?: { [key: string]: any };
+};
+
 // This is the tumblr image API limit.
 const PAGE_SIZE = 20;
 // Timeout before moving to next image.
 const AUTOPLAY_INTERVAL = 3000;
 
-// const client = tumblr.createClient({
-//   credentials: {
-//     consumer_key: process.env.REACT_APP_API_KEY,
-//     consumer_secret: process.env.REACT_APP_API_SECRET,
-//     token: process.env.REACT_APP_TOKEN,
-//     token_secret: process.env.REACT_APP_TOKEN_SECRET,
-//   },
-//   returnPromises: true,
-// });
-
-const oauth = new OAuth({
-  consumer: {
-    key: process.env.REACT_APP_API_KEY!,
-    secret: process.env.REACT_APP_API_SECRET!,
-  },
-  signature_method: 'HMAC-SHA1',
-  hash_function(base_string, key) {
-    return CryptoJS.HmacSHA1(base_string, key).toString(CryptoJS.enc.Base64);
-  },
-});
-
-const token = {
-  key: process.env.REACT_APP_TOKEN!,
-  secret: process.env.REACT_APP_TOKEN_SECRET!,
-};
-
 const getPosts = (
   blogIdentifier: string,
   offset: number = 0,
 ): Promise<Post[]> => {
-  return fetch(
+  return fetchSigned(
     `https://api.tumblr.com/v2/blog/${blogIdentifier}/posts?api_key=${process
       .env.REACT_APP_API_KEY || ''}&limit=${PAGE_SIZE}&offset=${offset}`,
   )
@@ -85,36 +65,27 @@ const likePost = (postId: string, reblogKey: string) => {
     reblog_key: reblogKey,
   };
 
-  // const searchString = new URLSearchParams(params).toString();
-
-  const requestData = {
-    // url: `/v2/user/like?${searchString}`,
-    url: 'https://api.tumblr.com/v2/user/like',
+  return fetchSigned('https://api.tumblr.com/v2/user/like', {
     method: 'POST',
-    data: params,
+    headers: {
+      'content-type': 'application/json; charset=utf8',
+    },
+    body: JSON.stringify(params),
+  });
+};
+
+const unlikePost = (postId: string, reblogKey: string) => {
+  const params = {
+    id: postId,
+    reblog_key: reblogKey,
   };
 
-  // const formData = new FormData();
-  // Object.entries(requestData.data).forEach(([key, value]) => {
-  //   formData.append(key, value);
-  // });
-  // Object.entries(oauth.authorize(requestData, token)).forEach(
-  //   ([key, value]) => {
-  //     formData.append(key, value);
-  //   },
-  // );
-
-  return fetch(requestData.url, {
-    method: requestData.method,
-    // credentials: 'include',
+  return fetchSigned('https://api.tumblr.com/v2/user/unlike', {
+    method: 'POST',
     headers: {
-      // 'content-type': 'application/x-www-form-urlencoded',
       'content-type': 'application/json; charset=utf8',
-      ...oauth.toHeader(oauth.authorize(requestData, token)),
     },
-    body: JSON.stringify(requestData.data),
-    // body: JSON.stringify(oauth.authorize(requestData, token)),
-    // body: oauth.authorize(requestData, token),
+    body: JSON.stringify(params),
   });
 };
 
@@ -246,6 +217,18 @@ const App = () => {
     });
   }, []);
 
+  const updatePost = useCallback(
+    (index: number, partialPost: Partial<Post>) => {
+      setState(state => {
+        const nextPosts = state.posts.slice();
+        const prevPost = nextPosts[index];
+        nextPosts[index] = { ...prevPost, ...partialPost };
+        return { ...state, posts: nextPosts };
+      });
+    },
+    [],
+  );
+
   const onInputEnter = useCallback(
     (event: React.KeyboardEvent<HTMLInputElement>) => {
       const { isGetNewPostsPending } = state;
@@ -346,6 +329,16 @@ const App = () => {
     }
   ).embed_code;
 
+  const toggleLiked = useCallback(async () => {
+    if (activePost.liked) {
+      await unlikePost(activePost.id_string, activePost.reblog_key);
+      updatePost(active, { liked: false });
+    } else {
+      await likePost(activePost.id_string, activePost.reblog_key);
+      updatePost(active, { liked: true });
+    }
+  }, [activePost]);
+
   return (
     <Root>
       <Container>
@@ -378,12 +371,8 @@ const App = () => {
           <Button onClick={toggleAutoplay}>
             {autoplayTimer == null ? 'Play' : 'Pause'}
           </Button>
-          <Button
-            onClick={() =>
-              likePost(activePost.id_string, activePost.reblog_key)
-            }
-          >
-            Like
+          <Button onClick={toggleLiked}>
+            {activePost.liked ? 'Unlike' : 'Like'}
           </Button>
         </Header>
         <Body>
