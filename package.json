@@ -28,7 +28,7 @@
     "@types/react-dom": "16.8.4",
     "@types/react-helmet": "6.0.0",
     "prettier": "1.17.0",
-    "react-scripts": "3.4.1",
+    "react-scripts": "3.4.4",
     "typescript": "3.9.6"
   },
   "browserslist": [
